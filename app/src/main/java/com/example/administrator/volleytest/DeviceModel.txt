@@ -1,0 +1,23 @@
+package com.example.administrator.volleytest;
+
+/**
+ * Created by cui on 2017/4/28.
+ */
+
+public class DeviceModel {
+    String deviceName;
+    String deviceAddress;
+
+    public DeviceModel(String deviceName, String deviceAddress) {
+        this.deviceName = deviceName;
+        this.deviceAddress = deviceAddress;
+    }
+
+    @Override
+    public String toString() {
+        return "DeviceModel{" +
+                "deviceName='" + deviceName + '\'' +
+                ", deviceAddress='" + deviceAddress + '\'' +
+                '}';
+    }
+}

@@ -1,0 +1,86 @@
+package com.example.administrator.volleytest;
+
+import android.content.Context;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.Button;
+import android.widget.TextView;
+
+import java.util.List;
+
+import static android.media.CamcorderProfile.get;
+
+/**
+ * Created by cui on 2017/4/28.
+ */
+
+public class BindDeviceAdapter extends BaseAdapter {
+    List<DeviceBindModel> devicesList;
+    private LayoutInflater inflater;
+    View.OnClickListener listener;
+    private Holder holder;
+    public BindDeviceAdapter(Context context, List<DeviceBindModel> devicesList,View.OnClickListener listener) {
+        this.devicesList=devicesList;
+        this.inflater = LayoutInflater.from(context);
+        this.listener=listener;
+
+    }
+
+    @Override
+    public int getCount() {
+        if(devicesList!=null){
+            return devicesList.size();
+        }
+        return 0;
+    }
+
+    @Override
+    public Object getItem(int position) {
+        if(devicesList!=null&&devicesList.size()>0){
+            return devicesList.get(position);
+        }
+        return null;
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return 0;
+    }
+
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+        DeviceBindModel deviceBindModel=  devicesList.get(position);
+        if(convertView==null){
+            convertView = inflater.inflate(R.layout.list_bind_device,null);
+            holder = new Holder();
+            holder.tv_bind_name=(TextView) convertView.findViewById(R.id.tv_bind_name);
+            holder.tv_is_bind=(TextView) convertView.findViewById(R.id.tv_is_bind);
+            holder.tv_bind_step=(TextView) convertView.findViewById(R.id.tv_bind_step);
+            holder.tv_bind_syn=(Button) convertView.findViewById(R.id.tv_bind_syn);
+            holder.tv_bind_sleep=(Button) convertView.findViewById(R.id.tv_bind_sleep);
+            convertView.setTag(holder);
+        }else {
+            holder=(Holder) convertView.getTag();
+        }
+        LogUtils.i("deviceBindModel="+deviceBindModel.toString());
+        if(deviceBindModel!=null){
+            holder.tv_bind_name.setText(deviceBindModel.deviceName);
+            holder.tv_bind_step.setText(deviceBindModel.step+"");
+            holder.tv_is_bind.setText((deviceBindModel.isConnect==1?"已连接":"未连接"));
+            holder.tv_bind_syn.setOnClickListener(listener);
+            holder.tv_bind_sleep.setOnClickListener(listener);
+
+        }
+        return convertView;
+    }
+    class Holder{
+        public TextView tv_bind_name;
+        public TextView tv_is_bind;
+        public TextView tv_bind_step;
+        public Button tv_bind_syn;
+        public Button tv_bind_sleep;
+
+    }
+}

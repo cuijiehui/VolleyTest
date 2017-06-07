@@ -1,0 +1,272 @@
+package com.example.administrator.volleytest;
+
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
+import android.content.Context;
+import android.content.Intent;
+
+import java.util.LinkedList;
+
+/**
+ * deviceName和deviceAddress可以作为FLAG
+ * Created by cui on 2017/4/28.
+ */
+
+public class DeviceBindModel {
+
+    String deviceAddress;
+    String deviceName;
+    BluetoothGatt mBluetoothGatt=null;
+    BluetoothDevice bluetoothdevice=null;
+    int isConnect = 0;//连接状态  0->未连接  1->已连接
+    int step = 0;
+    private LinkedList<NotificationInfo> notifications = new LinkedList<>();
+
+
+    public DeviceBindModel() {
+    }
+
+
+    @Override
+    public String toString() {
+        return "DeviceBindModel{" +
+                "deviceAddress='" + deviceAddress + '\'' +
+                ", deviceName='" + deviceName + '\'' +
+                ", mBluetoothGatt=" + mBluetoothGatt +
+                ", bluetoothdevice=" + bluetoothdevice +
+                ", isConnect=" + isConnect +
+                ", step=" + step +
+                ", notifications=" + notifications +
+                ", mGattCallback=" + mGattCallback +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        DeviceBindModel that = (DeviceBindModel) o;
+
+        if (deviceAddress != null ? !deviceAddress.equals(that.deviceAddress) : that.deviceAddress != null)
+            return false;
+        return deviceName != null ? deviceName.equals(that.deviceName) : that.deviceName == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = deviceAddress != null ? deviceAddress.hashCode() : 0;
+        result = 31 * result + (deviceName != null ? deviceName.hashCode() : 0);
+        return result;
+    }
+
+    public int getBondState() {
+        if (bluetoothdevice != null) {
+            if (bluetoothdevice.getBondState() == BluetoothDevice.BOND_NONE) {
+                isConnect = 0;
+            } else {
+                isConnect = 1;
+            }
+        }
+        return isConnect;
+    }
+
+    public BluetoothGattCallback getmGattCallback() {
+        return mGattCallback;
+    }
+
+    private final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
+
+        /**
+         *  用于设备返回数据到手机
+         * @param gatt
+         * @param characteristic
+         */
+        @Override
+        public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            LogUtils.i("onCharacteristicChanged");
+
+        }
+
+        /**
+         * 写回调
+         * @param gatt
+         * @param characteristic
+         * @param status
+         */
+        @Override
+        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            LogUtils.i("onCharacteristicWrite");
+        }
+
+        /**
+         * 连接状态放回
+         * @param gatt
+         * @param status
+         * @param newState
+         */
+        @Override
+        public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            // 断开连接
+            if (newState == BluetoothLeService.STATE_DISCONNECTED) {
+                broadcastUpdate(BluetoothLeService.ACTION_GATT_DISCONNECTED,null);
+                LogUtils.i( "xxxxxxxxxxxxx连接状态回调(state=" + status + " newState=" + newState + " 断开连接)");
+                isConnect=0;
+            }
+            // 已经连接
+            else if ((newState == BluetoothLeService.STATE_CONNECTED) && (status == 0)) {
+                LogUtils.i( "==>>1、连接状态回调(state=" + status + " newState=" + newState + " (" + "已连接),准备发现服务...!!!)");
+                isConnect=1;
+                broadcastUpdate(BluetoothLeService.ACTION_GATT_CONNECTED,null);
+                mBluetoothGatt.discoverServices();
+            }
+
+            // 设备发送连接请求失败回调(此处断开一直重连)
+            else if ((status == 133) && (newState == 2)) {
+                LogUtils.i( "+++++++++++++连接状态回调(state=" + status + " newState=" + newState + " 未连接到设备,准备重新连接)");
+                isConnect=0;
+
+            }
+        }
+
+        /**
+         * 发现BluetoothGat服务 这里打开通道的监听
+         * @param gatt
+         * @param status
+         */
+        @Override
+        public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                try {
+                    Thread.sleep(300);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                LogUtils.i( "==>>2、已发现服务(onServicesDiscovered),准备打开8002监听...!!!");
+//                enableNotificationForCharacteristic2();
+////                enableNotificationForCharacteristic4();
+//
+//                mHandler.postDelayed(new Runnable() {        // 延时监听心率以防失败
+//                    @Override
+//                    public void run() {
+//                        enableNotificationForHeartRateCharacteristic();
+//
+//                    }
+//                }, 13000);
+                notifications.clear();
+                notifications.addLast(new NotificationInfo(BluetoothLeService.UUID_SERVICE, BluetoothLeService.UUID_CHARACTERISTIC_8002));//8002通道
+//                notifications.addLast(new NotificationInfo(BluetoothLeService.UUID_SERVICE_OTHER_FUNCTION, BluetoothLeService.UUID_CHARACTERISTIC_8004));//8004通道
+//                notifications.addLast(new NotificationInfo(BluetoothLeService.UUID_SERVICE_HEART_RATE, BluetoothLeService.UUID_HEART_RATE_MEASUREMENT));//心率
+                enableNotification();
+            } else {
+                LogUtils.i( "==>>onServicesDiscovered,有异常...!!!");
+            }
+        }
+
+        @Override
+        public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+            LogUtils.i( "==>>3、已打开8002监听(onDescriptorWrite),准备发送Discovered广播...!!!");
+            if (BluetoothLeService.UUID_CHARACTERISTIC_2_CONFIG_DESCRIPTOR.equals(descriptor.getUuid())) {
+                if (notifications != null && notifications.size() > 0) {
+                    NotificationInfo info = notifications.removeFirst();
+                    if (info.service.equals(BluetoothLeService.UUID_SERVICE)) {
+                        LogUtils.w( "==>>3.1、已打开8001监听(onDescriptorWrite),准备打开其他功能监听...!!!");
+                    } else if (info.service.equals(BluetoothLeService.UUID_SERVICE_OTHER_FUNCTION)) {
+                        LogUtils.w( "==>>3.2、已打开其他功能监听(onDescriptorWrite)," + (true ? "准备打开心率监听...!!!" : "准备发送Discovered广播...!!!"));
+                    } else if (info.service.equals(BluetoothLeService.UUID_SERVICE_HEART_RATE)) {
+                        LogUtils.w( "==>>3.3、已打开心率监听(onDescriptorWrite),准备发送Discovered广播...!!!");
+                    }
+
+                    if (notifications.size() > 0) {
+                        LogUtils.i( "开启监没问题，进行下一个连接...剩余需要连接的数量为"+notifications.size());
+                        enableNotification();
+                    } else {
+                        gatt.readDescriptor(descriptor);
+                    }
+                } else {
+                    LogUtils.i( "开启监听有问题,断开连接...");
+                    broadcastUpdate(BluetoothLeService.ACTION_GATT_DISCONNECTED, null);
+                }
+            } else {
+                LogUtils.e( "==>>onDescriptorWrite,有异常...!!!");
+            }
+
+        }
+
+        @Override
+        public void onDescriptorRead(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+            if (BluetoothLeService.UUID_CHARACTERISTIC_2_CONFIG_DESCRIPTOR.equals(descriptor.getUuid())) {
+                LogUtils.i( "==>>4、已经连接完毕(onDescriptorRead),发送Discovered广播...!!!");
+                isConnect=1;
+                broadcastUpdate(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED, null);
+            } else {
+                isConnect=0;
+                LogUtils.i( "==>>onDescriptorRead,有异常...!!!");
+            }
+        }
+    };
+    public void enableNotification() {
+        LogUtils.i("enableNotification");
+        if (mBluetoothGatt != null && notifications != null && notifications.size() > 0) {
+            try {
+                LogUtils.i("notifications+"+notifications.getFirst().toString());
+                LogUtils.i("notifications+"+mBluetoothGatt.toString());
+                BluetoothGattCharacteristic bluetoothgattcharacteristic = mBluetoothGatt.getService(notifications.getFirst().service).getCharacteristic(notifications.getFirst().characteristic);
+                mBluetoothGatt.setCharacteristicNotification(bluetoothgattcharacteristic, true);
+
+                BluetoothGattDescriptor bluetoothgattdescriptor = bluetoothgattcharacteristic.getDescriptor(BluetoothLeService.UUID_CHARACTERISTIC_2_CONFIG_DESCRIPTOR);
+                bluetoothgattdescriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                mBluetoothGatt.writeDescriptor(bluetoothgattdescriptor);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * 发送广播消息
+     *
+     * @param msgType 消息类型
+     * @param bytes   具体数据
+     */
+    private void broadcastUpdate(String msgType, byte bytes[]) {
+        Intent intent = new Intent(msgType);
+        if (bytes != null)
+            intent.putExtra(BluetoothLeService.EXTRA_DATA, bytes);
+        LogUtils.i("broadcastUpdate="+msgType);
+        MyApplication.getInstance().sendBroadcast(intent);
+    }
+    /**
+     * 每个设备的重新连接
+     *
+     * @return
+     */
+    private boolean connect(Context context) {
+        boolean flag = false;
+        if (bluetoothdevice == null) {
+            return flag;
+        }
+        if ((mBluetoothGatt != null)) {
+            try {
+                mBluetoothGatt.disconnect();
+                mBluetoothGatt.close();
+                Thread.sleep(500);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            mBluetoothGatt = null;
+        }
+        mBluetoothGatt = bluetoothdevice.connectGatt(context, android.os.Build.VERSION.SDK_INT >= 19 ? false : true, mGattCallback);
+        if (bluetoothdevice.getBondState() == BluetoothDevice.BOND_BONDED) {
+            flag = false;
+        } else {
+            flag = true;
+        }
+        return flag;
+    }
+}

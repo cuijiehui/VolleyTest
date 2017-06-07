@@ -1,0 +1,138 @@
+package com.example.administrator.volleytest;
+
+import android.annotation.TargetApi;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
+import android.content.Context;
+import android.os.Build;
+
+import java.util.logging.Logger;
+
+/**
+ * Created by cui on 2017/5/4.
+ */
+@TargetApi(Build.VERSION_CODES.LOLLIPOP)
+public class BleScanUtils {
+//
+//
+//    private static final Class TAG = BluetoothScanUtil.class;
+//    private static BleScanUtils bluetoothScanUtil = new BleScanUtils();
+//
+//    private BluetoothScanResultCallBack bluetoothScanResultCallBack = null;
+//    private BluetoothManager mBluetoothManager;
+//    private BluetoothAdapter mBluetoothAdapter;
+//    private boolean mScanning = false;
+//
+//    private BleScanUtils() {
+//    }
+//
+//    public static BleScanUtils getInstance() {
+//        return bluetoothScanUtil;
+//    }
+//
+//    public interface BluetoothScanResultCallBack {
+//        void onLeScan(BluetoothDevice device, int rssi);
+//    }
+//
+//    private boolean init() {
+//        if (mBluetoothManager == null) {
+//            mBluetoothManager = ((BluetoothManager) MyApplication.getInstance().getSystemService(Context.BLUETOOTH_SERVICE));
+//            if (mBluetoothManager == null) {
+//                return false;
+//            }
+//        }
+//        mBluetoothAdapter = mBluetoothManager.getAdapter();
+//        return this.mBluetoothAdapter != null;
+//    }
+//
+//    public boolean startScan(BluetoothScanResultCallBack bluetoothScanResultCallBack) {
+//        if (android.os.Build.VERSION.SDK_INT >= 21) {
+//            return startEXScan(bluetoothScanResultCallBack);
+//        } else {
+//            if (!init()) return false;
+//            this.bluetoothScanResultCallBack = bluetoothScanResultCallBack;
+//            return scanLeDevice(true);
+//        }
+//    }
+//
+//    public void stopScan() {
+//        if (!init()) return;
+//        this.bluetoothScanResultCallBack = null;
+//        if (android.os.Build.VERSION.SDK_INT >= 21) {
+//            stopEXScan();
+//        } else {
+//            scanLeDevice(false);
+//        }
+//    }
+//
+//    private boolean scanLeDevice(boolean enable) {
+//        Logger.i("", "BluetoothScanUtil 处理扫描");
+//        if (enable) {
+//            if (mScanning)
+//                return true;
+//            boolean flag = false;
+//            for (int i = 0; i < 30; i++) {
+//                flag = mBluetoothAdapter.startLeScan(mLeScanCallback);
+//                Logger.e("", "当前为第" + i + "次开启扫描...flag : " + flag);
+//                if (flag) {
+//                    break;
+//                }
+//            }
+//            mScanning = flag;
+//        } else {
+//            if (!mScanning)
+//                return true;
+//            if (mBluetoothAdapter != null && mLeScanCallback != null)
+//                mBluetoothAdapter.stopLeScan(mLeScanCallback);
+//            mScanning = false;
+//        }
+//        return mScanning;
+//    }
+//
+//    private BluetoothAdapter.LeScanCallback mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
+//        @Override
+//        public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
+//            if (bluetoothScanResultCallBack != null) {
+//                bluetoothScanResultCallBack.onLeScan(device, rssi);
+//            }
+//        }
+//    };
+//
+//    public boolean startEXScan(BluetoothScanUtil.BluetoothScanResultCallBack bluetoothScanResultCallBack) {
+//        if (!init()) return false;
+//        this.bluetoothScanResultCallBack = bluetoothScanResultCallBack;
+//        return scanLeEXDevice(true);
+//    }
+//
+//    public void stopEXScan() {
+//        if (!init()) return;
+//        this.bluetoothScanResultCallBack = null;
+//        scanLeEXDevice(false);
+//    }
+//
+//    private boolean scanLeEXDevice(boolean enable) {
+//        Logger.i("", "BluetoothScanExUtil " + (enable ? "开启扫描" : "关闭扫描") + " mScanning : " + mScanning);
+//        if (enable) {
+//            ScanSettings.Builder builder = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY);                               // 推荐使用该配置,扫描速度比较快
+//            mBluetoothAdapter.getBluetoothLeScanner().startScan(null, builder.build(), scanCallback);
+//            mScanning = true;
+//        } else {
+//            mBluetoothAdapter.getBluetoothLeScanner().stopScan(scanCallback);
+//            mScanning = false;
+//        }
+//        return mScanning;
+//    }
+//    private ScanCallback scanCallback = new ScanCallback() {
+//        @Override
+//        public void onScanResult(int callbackType, ScanResult result) {
+//            super.onScanResult(callbackType, result);
+//            if (bluetoothScanResultCallBack != null) {
+//                bluetoothScanResultCallBack.onLeScan(result.getDevice(), result.getRssi());
+//            }
+//        }
+//    };
+}

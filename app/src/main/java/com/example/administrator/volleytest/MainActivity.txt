@@ -1,0 +1,233 @@
+package com.example.administrator.volleytest;
+
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.location.LocationManager;
+import android.os.Handler;
+import android.os.IBinder;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.Button;
+import android.widget.ListView;
+import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.List;
+
+
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+
+    Button bt_ble_open;
+    ListView lv_ble_device;
+    ListView lv_bind_device;
+    private static String TAG="MainActivity";
+    BluetoothAdapter mBluetoothAdapter;
+    ListViewBaseAdapter mListViewBaseAdapter;
+    List<DeviceModel> deviceNmaeList;
+    private List<BluetoothDevice> deviceList = new ArrayList<BluetoothDevice>();//用于保证不保存同样的设备
+    private Context mContext;
+    private BluetoothLeService mBluetoothLeService;
+    private BindDeviceAdapter mBindDeviceAdapter;
+    private Handler mHandler = new Handler() {
+    };
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        mContext=this;
+        findView();
+        initData();
+        setEvent();
+        bindService();
+    }
+
+    /**
+     * 绑定蓝牙服务
+     */
+    private void bindService(){
+        Intent intent = new Intent(mContext,BluetoothLeService.class);
+        mContext.bindService(intent, new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                mBluetoothLeService= ((BluetoothLeService.LocalBinder) service).getService();
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+
+            }
+        },mContext.BIND_AUTO_CREATE);
+        registerReceiver(mGattUpdateReceiver, BluetoothLeService.makeGattUpdateIntentFilter());
+
+    }
+    /**
+     * 接受蓝牙过来的广播
+     */
+    private BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            LogUtils.i( "BroadcastReceiver.action=" + action);
+            /**
+             * 蓝牙连接
+             */
+            if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
+                LogUtils.i( "BroadcastReceiver.action=ACTION_GATT_CONNECTED" + action);
+
+            }
+            /**
+             * 蓝牙断开
+             */
+            else if (BluetoothLeService.ACTION_GATT_DISCONNECTED
+                    .equals(action)) {
+                LogUtils.i( "BroadcastReceiver.action=ACTION_GATT_DISCONNECTED" + action);
+                mBindDeviceAdapter.notifyDataSetChanged();
+            }
+            /**
+             * ACTION_GATT_SERVICES_DISCOVERED
+             * 服务通道注册完成可以发送数据
+             */
+            else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED
+                    .equals(action)) {
+                LogUtils.i( "BroadcastReceiver.action=ACTION_GATT_SERVICES_DISCOVERED" + action);
+
+                mBindDeviceAdapter.notifyDataSetChanged();
+            }
+            /**
+             * GPS广播
+             */
+            else if (LocationManager.PROVIDERS_CHANGED_ACTION.equals(action)) {
+                LogUtils.i( "BroadcastReceiver.action=PROVIDERS_CHANGED_ACTION" + action);
+
+            }
+        }
+    };
+    private void reStart(){
+        Intent intent = new Intent(mContext,BluetoothLeService.class);
+        mContext.stopService(intent);
+        try{
+            Thread.sleep(500); // 延迟0.5秒
+
+        }catch (Exception e){
+
+        }
+        bindService();
+    }
+    /**
+     * 初始化数据
+     */
+    private void initData() {
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+        deviceNmaeList=new ArrayList<DeviceModel>();
+        mListViewBaseAdapter=new ListViewBaseAdapter(this,deviceNmaeList);
+        lv_ble_device.setAdapter(mListViewBaseAdapter);
+        mBindDeviceAdapter=new BindDeviceAdapter(this,PublicData.mBindList,click);
+        lv_bind_device.setAdapter(mBindDeviceAdapter);
+    }
+    View.OnClickListener click=new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+
+        }
+    };
+    private void setEvent() {
+        bt_ble_open.setOnClickListener(this);
+        lv_ble_device.setOnItemClickListener(onItemClickListener);
+    }
+    AdapterView.OnItemClickListener onItemClickListener= new AdapterView.OnItemClickListener() {
+        @Override
+        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            DeviceModel deviceModel=deviceNmaeList.get(position);
+            DeviceBindModel deviceBindModel=new DeviceBindModel();
+            deviceBindModel.deviceName=deviceModel.deviceName;
+            deviceBindModel.deviceAddress=deviceModel.deviceAddress;
+            LogUtils.i("deviceModel="+deviceModel);
+            if(!PublicData.mBindList.contains(deviceBindModel)){
+                PublicData.mBindList.add(deviceBindModel);
+                if(mBluetoothLeService!=null){
+                    mBluetoothLeService.connect(PublicData.mBindList.getFirst());
+                }else{
+                    reStart();
+                }
+            }else{
+                Toast.makeText(MainActivity.this,"已经连接过",Toast.LENGTH_SHORT).show();
+            }
+        }
+    };
+    private void findView() {
+        bt_ble_open=(Button) findViewById(R.id.bt_ble_open);
+        lv_ble_device=(ListView)findViewById(R.id.lv_ble_device);
+        lv_bind_device=(ListView)findViewById(R.id.lv_bind_device);
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()){
+            case R.id.bt_ble_open:
+                startBluetooth();
+                ensureDiscoverable();
+                LogUtils.w( "-------------1");
+
+                break;
+        }
+    }
+    private void startBluetooth() {
+        if (mBluetoothAdapter == null) {
+            // 表明此手机不支持蓝牙
+            LogUtils.w( "device is not supported bluebooth");
+            return;
+        }
+        if (!mBluetoothAdapter.isEnabled()) { // 蓝牙未开启，则开启蓝牙
+            mBluetoothAdapter.enable();
+        }
+    }
+    private void ensureDiscoverable() {
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                    BluetoothScanUtil.getInstance().stopScan();
+            }
+        }, 10000);
+        BluetoothScanUtil.getInstance().startScan(bluetoothScanResultCallBack);
+
+
+    }
+    private BluetoothScanUtil.BluetoothScanResultCallBack bluetoothScanResultCallBack = new BluetoothScanUtil.BluetoothScanResultCallBack() {
+
+        @Override
+        public void onLeScan(BluetoothDevice devices, int rssi) {
+            {
+                final BluetoothDevice device=devices;
+                LogUtils.w( "device="+device.getName());
+                if(device.getName()==null){
+                    return;
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        if(device.getName().indexOf("BASIC")>-1){
+                            LogUtils.w( "device="+device.getName());
+                            if(!deviceList.contains(device)){
+                                deviceList.add(device);
+                                deviceNmaeList.add(new DeviceModel(device.getName(),device.getAddress()));
+                                mListViewBaseAdapter.notifyDataSetChanged();
+                            }
+
+                        }
+                    }
+                });
+            }
+
+        }
+    };
+}
